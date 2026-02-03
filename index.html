@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Commander - BETA</title>
+    <style>
+        /* IMPORT CZCIONKI ROBOTO (KLIMAT WT) */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap');
+
+        /* RESET I PODSTAWY */
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; outline: none; }
+        body {
+            font-family: 'Roboto Condensed', sans-serif;
+            background-color: #0f0f0f;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ---------------------------------------------------- */
+        /* --- EKRAN ŁADOWANIA --- */
+        /* ---------------------------------------------------- */
+        #intro-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000; z-index: 99999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 1.5s ease;
+        }
+        #loading-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            transition: opacity 1s ease-in-out; opacity: 0.4; z-index: 1;
+        }
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to right, rgba(0,0,0,0.8) 0%, transparent 50%, rgba(0,0,0,0.8) 100%);
+            z-index: 2;
+        }
+        .intro-text {
+            color: #fff; font-size: 42px; font-weight: bold; letter-spacing: 6px;
+            text-transform: uppercase; opacity: 0; position: absolute;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.2); z-index: 10;
+        }
+        @keyframes textSlowFade {
+            0% { opacity: 0; transform: scale(0.95); filter: blur(5px); }
+            20% { opacity: 1; transform: scale(1); filter: blur(0px); }
+            80% { opacity: 1; transform: scale(1.05); filter: blur(0px); }
+            100% { opacity: 0; transform: scale(1.1); filter: blur(10px); }
+        }
+        .animate-text-slow { animation: textSlowFade 4s forwards; }
+        
+        #msfs-loading-ui {
+            position: absolute; bottom: 50px; right: 50px; display: none;
+            flex-direction: column; align-items: flex-end; z-index: 20; text-align: right;
+        }
+        .spinner-circle {
+            width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #ffae00; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 15px;
+        }
+        .loading-label { font-size: 24px; font-weight: 300; text-transform: uppercase; letter-spacing: 2px; color: #fff; }
+        
+        #trivia-container { position: absolute; bottom: 50px; left: 50px; max-width: 600px; z-index: 20; display: none; }
+        .trivia-title { color: #ffae00; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .trivia-title::before { content: ''; display: block; width: 30px; height: 2px; background: #ffae00; }
+        .trivia-text { font-size: 18px; line-height: 1.5; color: #ddd; font-style: italic; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); opacity: 0; transition: opacity 1s; }
+        #skip-intro { position: absolute; top: 20px; right: 20px; color: #555; font-size: 10px; cursor: pointer; z-index: 100; }
+        #skip-intro:hover { color: #fff; }
+
+        /* ---------------------------------------------------- */
+        /* --- GŁÓWNE STYLE UI --- */
+        /* ---------------------------------------------------- */
+        .garage-background {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(30, 40, 50, 0.8) 0%, rgba(10, 10, 10, 1) 100%);
+            z-index: 1;
+        }
+        .garage-background::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100px 100px; pointer-events: none;
+        }
+
+        .ui-layer {
+            position: relative; z-index: 10; height: 100%;
+            display: flex; flex-direction: column; justify-content: space-between; pointer-events: none;
+        }
+
+        /* --- GÓRNY PASEK --- */
+        .top-bar {
+            background: rgba(20, 20, 25, 0.7); backdrop-filter: blur(8px);
+            height: 65px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 30px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: auto; position: relative; z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .menu-items { display: flex; gap: 30px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+        .menu-tab { cursor: pointer; padding: 20px 0; position: relative; color: #aaa; transition: all 0.3s; font-weight: bold; }
+        .menu-tab:hover { color: #fff; text-shadow: 0 0 8px rgba(255,255,255,0.5); }
+        .menu-tab.active { color: #fff; }
+        .menu-tab.active::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px;
+            background-color: #e67e22; box-shadow: 0 -2px 10px rgba(230, 126, 34, 0.6);
+        }
+
+        .battle-btn {
+            background: linear-gradient(180deg, #d32f2f 0%, #8b0000 100%);
+            color: #fff; font-weight: 700; font-size: 20px; padding: 10px 60px;
+            border: 1px solid #ff5252; border-radius: 2px; cursor: pointer; text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(180, 0, 0, 0.6); transition: all 0.2s; letter-spacing: 1px;
+            font-family: 'Roboto Condensed', sans-serif;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        .battle-btn:hover { transform: scale(1.02); background: linear-gradient(180deg, #ff4444 0%, #b30000 100%); box-shadow: 0 0 25px rgba(255, 50, 50, 0.8); }
+        .battle-btn:active { transform: scale(0.98); }
+
+        .currency { display: flex; gap: 25px; font-size: 15px; color: #ddd; align-items: center; }
+        .silver-lions { color: #b0c4de; font-weight: bold; text-shadow: 0 0 5px rgba(176,196,222,0.4); }
+        .golden-eagles { color: #ffd700; font-weight: bold; text-shadow: 0 0 5px rgba(255,215,0,0.4); }
+
+        .vehicle-display { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2; width: 65%; max-width: 900px; }
+        .vehicle-image { width: 100%; height: auto; filter: drop-shadow(0 15px 30px rgba(0,0,0,0.9)); transition: opacity 0.3s ease; }
+
+        .garage-view-element { transition: opacity 0.3s; }
+        .panel-box {
+            background: rgba(20, 24, 28, 0.85); border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px); padding: 15px; pointer-events: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .stats-panel { position: absolute; left: 30px; top: 100px; width: 320px; }
+        .upgrades-panel { position: absolute; right: 30px; top: 100px; width: 340px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .panel-header { font-size: 18px; color: #e67e22; text-transform: uppercase; border-bottom: 2px solid rgba(255, 255, 255, 0.1); padding-bottom: 8px; margin-bottom: 12px; font-weight: bold; letter-spacing: 1px; }
+        
+        .vehicle-name { font-size: 32px; font-weight: bold; color: #fff; margin-bottom: 0px; text-transform: uppercase; letter-spacing: 1px; }
+        .vehicle-rank { font-size: 13px; color: #bbb; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .flag-icon { height: 16px; border-radius: 1px; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        
+        .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 14px; }
+        .stat-label { color: #aaa; }
+        .stat-value { font-weight: bold; color: #fff; }
+
+        .upgrade-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; }
+        .upgrade-item:hover { background: rgba(255,255,255,0.07); }
+        
+        .upg-info { display: flex; flex-direction: column; }
+        .upg-name { color: #eee; font-size: 14px; font-weight: bold; }
+        .upg-lvl { color: #888; font-size: 11px; margin-top: 2px; }
+        
+        .upg-btn {
+            background: linear-gradient(180deg, #2e7d32 0%, #1b5e20 100%);
+            border: 1px solid #4caf50; color: #fff; padding: 6px 12px; font-size: 11px;
+            cursor: pointer; border-radius: 2px; transition: 0.2s; text-transform: uppercase;
+            min-width: 90px; text-align: center; font-weight: bold; letter-spacing: 0.5px;
+        }
+        .upg-btn:hover { filter: brightness(1.2); }
+        .upg-btn.disabled { background: #333; border-color: #555; color: #777; cursor: not-allowed; }
+        .upg-cost { display: block; font-weight: normal; font-size: 10px; opacity: 0.8; }
+
+        .bottom-bar {
+            background: rgba(10, 12, 15, 0.9); border-top: 1px solid #333;
+            padding: 10px 0; display: flex; justify-content: center; gap: 5px;
+            pointer-events: auto; position: absolute; bottom: 0; width: 100%;
+            backdrop-filter: blur(5px);
+        }
+        .crew-slot {
+            width: 160px; height: 100px; 
+            background: linear-gradient(180deg, #252525 0%, #1a1a1a 100%);
+            border: 1px solid #3a3a3a; position: relative; cursor: pointer; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 5px;
+        }
+        .crew-slot:hover { background: #333; border-color: #555; }
+        .crew-slot.active { 
+            border: 1px solid #e67e22; background: linear-gradient(180deg, #3a3a3a 0%, #252525 100%);
+            box-shadow: inset 0 0 10px rgba(230, 126, 34, 0.2);
+        }
+        /* ZABLOKOWANY T-34 */
+        .crew-slot.locked {
+            filter: grayscale(1) brightness(0.7);
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+        .crew-slot.locked:hover {
+            border-color: #d32f2f;
+        }
+        .crew-slot.locked::after {
+            content: '🔒';
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 30px; z-index: 10;
+        }
+
+        .slot-img { width: 90%; height: 55px; background-size: cover; background-position: center; margin-bottom: 5px; filter: grayscale(0.7) contrast(1.2); transition: filter 0.2s; }
+        .crew-slot.active .slot-img { filter: grayscale(0) contrast(1.1); }
+        .slot-name { font-size: 12px; color: #ccc; font-weight: bold; text-transform: uppercase; }
+        .slot-br { 
+            position: absolute; top: 4px; right: 4px; 
+            font-size: 10px; background: #111; padding: 2px 5px; border-radius: 2px; 
+            border: 1px solid #444; color: #aaa;
+        }
+
+        /* --- SKLEP I INNE GRIDY --- */
+        .fullscreen-overlay {
+            position: absolute; top: 65px; left: 0; width: 100%; height: calc(100% - 65px);
+            background: rgba(14, 16, 20, 0.95); z-index: 50; display: none;
+            flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .shop-container {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+            max-width: 900px; width: 90%; height: 85%; overflow-y: auto; padding: 20px;
+        }
+        .shop-container::-webkit-scrollbar { width: 8px; }
+        .shop-container::-webkit-scrollbar-track { background: #111; }
+        .shop-container::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+        .shop-card {
+            background: linear-gradient(135deg, #23272b 0%, #181b1e 100%);
+            border: 1px solid #333; border-left: 4px solid #555;
+            padding: 15px; display: flex; flex-direction: row; align-items: center; gap: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .shop-card:hover { transform: translateX(5px); border-color: #666; }
+        
+        .shop-card.daily { border-left-color: #ffd700; background: linear-gradient(135deg, #2a2a20 0%, #1a1a1a 100%); }
+        .shop-card.premium { border-left-color: #d32f2f; }
+        .shop-card.locked { opacity: 0.6; filter: grayscale(0.9); cursor: not-allowed; }
+        .shop-card.locked::after { content: '🔒 WYMAGANY POZIOM'; position: absolute; top: 10px; right: 10px; font-size: 10px; font-weight: bold; background: #000; padding: 2px 5px; color: #888; }
+
+        .shop-img { width: 140px; height: 100px; object-fit: cover; border: 1px solid #333; }
+        .shop-content { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .shop-title { color: #fff; font-size: 18px; font-weight: bold; margin-bottom: 4px; text-transform: uppercase; }
+        .shop-desc { color: #aaa; font-size: 12px; margin-bottom: 10px; line-height: 1.3; }
+        
+        .shop-btn {
+            background: #2196f3; color: #fff; border: none; padding: 8px 15px;
+            font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 2px; transition: 0.2s;
+            align-self: flex-start; font-size: 12px; letter-spacing: 0.5px;
+        }
+        .shop-btn:hover { background: #42a5f5; box-shadow: 0 0 10px rgba(33, 150, 243, 0.4); }
+        .shop-btn.btn-gold { background: linear-gradient(to bottom, #ffd700, #ffb300); color: #222; border: 1px solid #b78900; }
+        .shop-btn.btn-gold:hover { filter: brightness(1.1); box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+        .shop-btn.claimed { background: #333; color: #555; cursor: default; border: 1px solid #444; }
+        .shop-btn.locked-btn { background: #222; color: #444; cursor: not-allowed; border: 1px solid #333; }
+        .countdown-timer { font-family: monospace; font-size: 14px; color: #e67e22; margin-top: 5px; font-weight: bold; }
+
+        .tree-message { font-size: 40px; font-weight: bold; color: #555; text-transform: uppercase; letter-spacing: 5px; border: 2px solid #333; padding: 20px 60px; }
+        
+        .profile-card {
+            background: linear-gradient(135deg, #2b2b2b 0%, #1a1a1a 100%);
+            border: 1px solid #444; padding: 40px; border-radius: 2px; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8); width: 450px;
+        }
+        .profile-pic-container { width: 120px; height: 120px; border: 2px solid #e67e22; margin-bottom: 20px; overflow: hidden; background-color: #000; }
+        .profile-pic { width: 100%; height: 100%; object-fit: cover; }
+        .profile-nick { font-size: 28px; font-weight: bold; color: #fff; margin-bottom: 10px; letter-spacing: 1px; }
+        .profile-stats-mock { width: 100%; margin-top: 20px; border-top: 1px solid #444; padding-top: 20px; display: flex; justify-content: space-around; color: #aaa; font-size: 14px; }
+        .p-stat { text-align: center; }
+        .p-stat span { display: block; font-size: 18px; color: #e67e22; font-weight: bold; }
+
+        /* --- QUEUE / MATCHMAKING --- */
+        .queue-container {
+            text-align: center; background: rgba(10,10,10,0.95); padding: 40px;
+            border: 1px solid #555; box-shadow: 0 0 50px rgba(0,0,0,0.8); width: 600px;
+        }
+        .queue-title { font-size: 20px; color: #aaa; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; }
+        .queue-info-box {
+            display: flex; justify-content: space-between; background: #111; padding: 10px;
+            margin-bottom: 20px; border: 1px solid #333; font-size: 12px; color: #888; text-transform: uppercase;
+        }
+        .queue-info-box span { color: #fff; font-weight: bold; margin-left: 5px; }
+        
+        .queue-slideshow {
+            width: 100%; height: 250px; background: #000; margin-bottom: 20px;
+            border: 1px solid #333; position: relative; overflow: hidden;
+        }
+        .slide-img {
+            width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0;
+            opacity: 0; transition: opacity 1s;
+        }
+        .slide-img.active { opacity: 1; }
+
+        .queue-counter { font-size: 40px; font-weight: bold; color: #fff; font-family: 'Roboto Condensed', monospace; }
+        .queue-max { font-size: 20px; color: #555; }
+        .loader { border: 4px solid #333; border-top: 4px solid #e67e22; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .btn-exit { background: transparent; border: 1px solid #555; color: #888; padding: 8px 30px; font-size: 14px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        .btn-exit:hover { border-color: #d32f2f; color: #d32f2f; }
+
+        #music-hint { position: absolute; bottom: 130px; width: 100%; text-align: center; color: rgba(255,255,255,0.2); font-size: 10px; pointer-events: none; z-index: 5; }
+
+        /* TUTORIAL */
+        #tutorial-container { position: absolute; bottom: 20px; left: 20px; z-index: 999; display: flex; align-items: flex-end; pointer-events: auto; transform: translateX(-150%); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #tutorial-container.visible { transform: translateX(0); }
+        .soldier-img { width: 140px; height: auto; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.8)); z-index: 1001; margin-right: -20px; margin-bottom: -10px; }
+        .tutorial-box { width: 450px; background: rgba(20, 24, 30, 0.95); border: 1px solid #555; border-left: 4px solid #ffae00; padding: 15px 15px 15px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); position: relative; border-radius: 4px; }
+        .t-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        .t-name { color: #ffae00; font-weight: bold; font-size: 16px; text-transform: uppercase; }
+        .t-step { font-size: 11px; color: #888; background: #000; padding: 2px 6px; border-radius: 3px; }
+        .t-content { font-size: 14px; line-height: 1.4; color: #ddd; min-height: 50px; margin-bottom: 15px; }
+        .t-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .t-btn { background: #333; color: #fff; border: 1px solid #555; padding: 5px 15px; cursor: pointer; font-size: 12px; text-transform: uppercase; transition: all 0.2s; }
+        .t-btn:hover { background: #444; }
+        .t-btn-next { background: linear-gradient(180deg, #ffae00 0%, #e65100 100%); border: 1px solid #ff6f00; color: #000; font-weight: bold; }
+        .t-btn-next:hover { filter: brightness(1.2); }
+        .highlight-tutorial { box-shadow: 0 0 20px 5px rgba(255, 174, 0, 0.6) !important; border-color: #ffae00 !important; z-index: 1000 !important; position: relative; }
+        .cursor-blink::after { content: '|'; animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* ---------------------------------------------------- */
+        /* --- GAME ENGINE (BATTLE MODE) --- */
+        /* ---------------------------------------------------- */
+        #game-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #111; z-index: 500; display: none; overflow: hidden;
+            font-family: 'Roboto Condensed', sans-serif;
+        }
+        
+        #game-camera {
+            width: 100%; height: 100%; position: relative; overflow: hidden;
+        }
+        #game-world {
+            position: absolute; width: 2000px; height: 2000px;
+        }
+        
+        .game-chunk {
+            position: absolute; width: 100px; height: 100px;
+            background-image: url('https://imgur.com/dX5plpf.png');
+            background-size: cover;
+        }
+
+        .game-entity {
+            position: absolute; width: 50px; height: 50px;
+            transform-origin: center; z-index: 50;
+            background-repeat: no-repeat; background-size: contain; background-position: center;
+        }
+        
+        .entity-tank {
+            background-image: url('https://imgur.com/y74Hb83.png');
+            transition: none; /* Ważne dla płynnego ruchu JS */
+        }
+
+        .tank-ally { filter: hue-rotate(200deg) brightness(1.2); }
+        .tank-enemy { filter: hue-rotate(0deg) saturate(1.5) brightness(0.8); }
+        .tank-player { filter: none; } 
+
+        .entity-tree {
+            width: 120px; height: 120px;
+            background-image: url('https://imgur.com/EHuhhrV.png');
+            z-index: 100; pointer-events: none;
+        }
+        
+        .entity-bullet {
+            width: 6px; height: 6px; background: #fff; border-radius: 50%;
+            box-shadow: 0 0 5px #ffae00; z-index: 60;
+        }
+
+        .hp-bar-container {
+            position: absolute; top: -15px; left: -10px; width: 70px; height: 6px;
+            background: #333; border: 1px solid #000; pointer-events: none; z-index: 110;
+        }
+        .hp-fill { height: 100%; background: #0f0; transition: width 0.2s; }
+        .enemy-hp .hp-fill { background: #d32f2f; }
+        .unit-name {
+            position: absolute; top: -30px; left: -20px; width: 90px;
+            text-align: center; font-size: 10px; color: #fff; text-shadow: 1px 1px 2px #000;
+            font-weight: bold; pointer-events: none; z-index: 110;
+        }
+
+        #game-hud {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 600;
+        }
+        .hud-top {
+            position: absolute; top: 20px; width: 100%; text-align: center;
+        }
+        .enemy-counter {
+            background: rgba(0,0,0,0.6); color: #fff; padding: 10px 30px;
+            border: 1px solid #d32f2f; border-top: 4px solid #d32f2f;
+            font-size: 24px; font-weight: bold; display: inline-block;
+        }
+        
+        .hud-bottom {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 20px; align-items: center;
+        }
+        .player-status-box {
+            background: rgba(0,0,0,0.7); padding: 15px; border: 1px solid #555;
+            display: flex; flex-direction: column; align-items: center; min-width: 200px;
+        }
+        .status-label { font-size: 12px; color: #aaa; margin-bottom: 5px; }
+        .status-val { font-size: 20px; font-weight: bold; color: #fff; }
+        .reload-bar { width: 100%; height: 5px; background: #333; margin-top: 5px; }
+        .reload-fill { width: 100%; height: 100%; background: #ffae00; transition: width 0.1s linear; }
+
+        .end-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none; z-index: 700;
+            flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: auto;
+        }
+        .end-title { font-size: 60px; font-weight: bold; margin-bottom: 20px; letter-spacing: 5px; }
+        .win-text { color: #4caf50; }
+        .lose-text { color: #d32f2f; }
+        .end-btn { margin-top: 30px; font-size: 18px; padding: 15px 40px; }
+
+    </style>
+</head>
+<body>
+
+<div id="intro-layer">
+    <div id="loading-bg"></div>
+    <div class="loading-overlay"></div>
+    <div id="intro-text-1" class="intro-text">© Fenix Studios 2026</div>
+    <div id="msfs-loading-ui">
+        <div class="spinner-circle"></div>
+        <div class="loading-label">Wczytywanie...</div>
+    </div>
+    <div id="trivia-container">
+        <div class="trivia-title">Ciekawostka</div>
+        <div id="trivia-text" class="trivia-text"></div>
+    </div>
+    <div id="skip-intro" onclick="finishLoading(true)">DEV: Pomiń</div>
+</div>
+
+<audio id="menu-music" loop>
+    <source src="https://www.chosic.com/wp-content/uploads/2021/07/The-Epic-Hero-Epic-Music-Full.mp3" type="audio/mpeg">
+</audio>
+
+    <div class="garage-background"></div>
+
+    <div id="garage-tank-display" class="vehicle-display garage-view-element">
+         <img src="https://placehold.co/800x400/333/FFF?text=Wczytywanie+Modelu..." alt="Tank" id="main-tank-img" class="vehicle-image">
+    </div>
+    
+    <div id="music-hint">© Fenix Studios 2026</div>
+
+    <div id="view-tree" class="fullscreen-overlay">
+        <div class="tree-message">Drzewko Badań (Wkrótce)</div>
+    </div>
+
+    <div id="view-shop" class="fullscreen-overlay">
+        <div class="shop-container">
+            <div class="shop-card daily">
+                <img src="https://placehold.co/140x100/FFD700/000?text=ZŁOTO" class="shop-img" alt="Reward">
+                <div class="shop-content">
+                    <div class="shop-title">Codzienny Przydział</div>
+                    <div class="shop-desc">Zawiera 10 Złota i 50 Punktów Ulepszeń. Odnawia się codziennie o 10:00.</div>
+                    <button id="btn-claim-daily" class="shop-btn btn-gold" onclick="claimDaily()">ODBIERZ NAGRODĘ</button>
+                    <div id="daily-timer" class="countdown-timer" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="shop-card">
+                 <img src="https://placehold.co/140x100/2196f3/FFF?text=PAKIET" class="shop-img" alt="Starter">
+                <div class="shop-content">
+                    <div class="shop-title">Pakiet Rekruta</div>
+                    <div class="shop-desc">Jednorazowy bonus 500 biletów na start kariery.</div>
+                    <button id="btn-claim-offer" class="shop-btn" onclick="claimStarterPack()">ODBIERZ ZA DARMO</button>
+                </div>
+            </div>
+            <div class="shop-card premium locked">
+                <img src="https://placehold.co/140x100/d32f2f/FFF?text=PREMIUM" class="shop-img" alt="Premium">
+                <div class="shop-content">
+                    <div class="shop-title">Konto Premium (7 dni)</div>
+                    <div class="shop-desc">+100% do zdobywanych punktów i srebra po bitwie.</div>
+                    <button class="shop-btn locked-btn">KUP (Zablokowane)</button>
+                </div>
+            </div>
+            <div class="shop-card locked">
+                <img src="https://placehold.co/140x100/444/FFF?text=SKRZYNIA" class="shop-img" alt="Crate">
+                <div class="shop-content">
+                    <div class="shop-title">Skrzynia Pancerna</div>
+                    <div class="shop-desc">Losowy przedmiot, rozkaz lub unikalny kamuflaż.</div>
+                    <button class="shop-btn locked-btn">KUP (Zablokowane)</button>
+                </div>
+            </div>
+            <div class="shop-card locked">
+                <img src="https://placehold.co/140x100/388e3c/FFF?text=CAMO" class="shop-img" alt="Camo">
+                <div class="shop-content">
+                    <div class="shop-title">Kamuflaż "Tundra"</div>
+                    <div class="shop-desc">Zwiększa maskowanie o 5% na mapach zimowych.</div>
+                    <button class="shop-btn locked-btn">KUP (Zablokowane)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-profile" class="fullscreen-overlay">
+        <div class="profile-card panel-box">
+            <div class="profile-pic-container">
+                <img src="https://imgur.com/lKsRi6s.png" alt="Soldier" class="profile-pic">
+            </div>
+             <div class="profile-nick">Player142</div>
+            <div class="profile-stats-mock">
+                <div class="p-stat"><span id="p-battles">0</span>Bitwy</div>
+                <div class="p-stat"><span id="p-winrate">0%</span>Wygrane</div>
+                <div class="p-stat">1<span></span>Poziom</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-queue" class="fullscreen-overlay" style="z-index: 200;">
+         <div class="queue-container">
+            <div class="queue-title">Wyszukiwanie bitwy...</div>
+            <div class="queue-info-box">
+                <div>Czołg: <span id="q-tank-name" style="color:#e67e22">Panzer III</span></div>
+                <div>Mapa: <span style="color:#2196f3">#001</span></div>
+                <div>Tryb: <span style="color:#d32f2f">Dominacja</span></div>
+            </div>
+
+            <div class="queue-slideshow">
+                <img src="https://imgur.com/RgPG6iF.png" class="slide-img active" id="slide-1">
+                <img src="https://imgur.com/qh0cYFD.png" class="slide-img" id="slide-2">
+                <img src="https://imgur.com/NX2gnDz.png" class="slide-img" id="slide-3">
+            </div>
+
+             <div class="queue-counter">
+                <span id="player-count">1</span><span class="queue-max">/ 20</span>
+            </div>
+            <div id="queue-loader" class="loader"></div>
+            
+            <button id="btn-exit-queue" class="btn-exit" onclick="exitQueue()">ANULUJ</button>
+        </div>
+    </div>
+
+    <div class="ui-layer">
+        <header class="top-bar" id="ui-top-bar">
+            <div class="menu-items">
+                 <div class="menu-tab active" onclick="switchTab('garage', this)">Garaż</div>
+                 <div class="menu-tab" onclick="switchTab('shop', this)">Sklep</div>
+                <div class="menu-tab" onclick="switchTab('tree', this)">Badania</div>
+                <div class="menu-tab" onclick="switchTab('profile', this)">Profil</div>
+            </div>
+
+            <button class="battle-btn" id="ui-battle-btn" onclick="startQueue()">DO BOJU!</button>
+
+            <div class="currency">
+                 <span class="silver-lions" title="Punkty Ulepszeń">🎫 <span id="currency-silver">0</span></span>
+                <span class="golden-eagles" title="Złoto">📀 <span id="currency-gold">0</span></span>
+            </div>
+        </header>
+
+        <aside id="garage-stats" class="stats-panel garage-view-element panel-box">
+             <div id="tank-name" class="vehicle-name">Panzer III</div>
+            <div id="tank-rank" class="vehicle-rank"></div>
+            <div class="stat-row">
+                <span class="stat-label">Pancerz (kadłub):</span>
+                <span class="stat-value" id="stat-armor">...</span>
+            </div>
+             <div class="stat-row">
+                <span class="stat-label">Działo:</span>
+                  <span class="stat-value" id="stat-gun">...</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Przeładowanie:</span>
+                 <span class="stat-value" id="stat-reload">...</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Prędkość maks.:</span>
+                <span class="stat-value" id="stat-speed">...</span>
+            </div>
+            <div class="stat-row">
+                 <span class="stat-label">Penetracja:</span>
+                <span class="stat-value" id="stat-pen">...</span>
+            </div>
+        </aside>
+
+        <aside id="garage-upgrades" class="upgrades-panel garage-view-element panel-box">
+            <div class="panel-header">Modyfikacje</div>
+            <div id="upgrades-list"></div>
+        </aside>
+
+        <footer id="garage-slots" class="bottom-bar garage-view-element">
+             <div class="crew-slot active" id="slot-0" onclick="selectTank(0)">
+                <span class="slot-br">BR 5.7</span>
+                <div class="slot-img" style="background-image: url('https://imgur.com/tKvJCgF.png');"></div>
+                <div class="slot-name">Panzer III</div>
+            </div>
+
+            <div class="crew-slot locked" id="slot-1" onclick="selectTank(1)">
+                <span class="slot-br">BR 5.3</span>
+                <div class="slot-img" style="background-image: url('https://imgur.com/pwBirJA.png');"></div>
+                <div class="slot-name">T-34 (Zablokowany)</div>
+            </div>
+        </footer>
+    </div>
+
+    <div id="game-layer">
+        <div id="game-camera">
+            <div id="game-world">
+                </div>
+        </div>
+        
+        <div id="game-hud">
+            <div class="hud-top">
+                <div class="enemy-counter">CELE: <span id="hud-enemies-left">10</span></div>
+            </div>
+            <div class="hud-bottom">
+                <div class="player-status-box">
+                    <span class="status-label">STAN PANCERZA</span>
+                    <span class="status-val" id="hud-hp">1000 / 1000</span>
+                </div>
+                <div class="player-status-box">
+                    <span class="status-label">DZIAŁO</span>
+                    <div class="reload-bar"><div class="reload-fill" id="hud-reload"></div></div>
+                    <span class="status-val" style="font-size:14px; margin-top:5px;" id="hud-reload-text">GOTOWY</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-win" class="end-screen">
+            <div class="end-title win-text">ZWYCIĘSTWO!</div>
+            <div class="queue-info-box">Wrogie siły zneutralizowane.</div>
+            <button class="battle-btn end-btn" onclick="closeGame(true)">POWRÓT DO BAZY</button>
+        </div>
+        
+        <div id="screen-lose" class="end-screen">
+            <div class="end-title lose-text">PORAŻKA</div>
+            <div class="queue-info-box">Twój czołg został zniszczony.</div>
+            <button class="battle-btn end-btn" onclick="closeGame(false)">POWRÓT DO BAZY</button>
+        </div>
+    </div>
+
+    <div id="tutorial-container">
+         <img src="https://imgur.com/lKsRi6s.png" alt="Olek Soldier" class="soldier-img">
+        <div class="tutorial-box">
+            <div class="t-header">
+                <span class="t-name">Olek</span>
+                <span class="t-step" id="t-step-counter">Samouczek (1 / 5)</span>
+            </div>
+            <div class="t-content cursor-blink" id="t-text"></div>
+            <div class="t-buttons">
+                <button class="t-btn" onclick="closeTutorial()">Pomiń</button>
+                <button class="t-btn t-btn-next" onclick="nextTutorialStep()">Dalej ➞</button>
+            </div>
+         </div>
+    </div>
+    
+    <script>
+        // --- ZARZĄDZANIE STANEM GRY ---
+        let playerState = {
+            silver: 0,
+            gold: 0,
+            shopClaimed: false,
+            lastDailyClaim: 0, 
+            battles: 0,
+            wins: 0,
+            upgrades: {
+                0: { crew: 1, armor: 1, engine: 1, gun: 1 },
+                1: { crew: 1, armor: 1, engine: 1, gun: 1 }
+            }
+        };
+        const upgradeCosts = { 2: 200, 3: 350, 4: 500 };
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('tankCommanderState_WT');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    playerState = { ...playerState, ...parsed };
+                    if(!playerState.upgrades || !playerState.upgrades[0]) {
+                         playerState.upgrades = {
+                            0: { crew: 1, armor: 1, engine: 1, gun: 1 },
+                            1: { crew: 1, armor: 1, engine: 1, gun: 1 }
+                        };
+                    }
+                    if(typeof playerState.battles === 'undefined') { playerState.battles = 0; playerState.wins = 0; }
+                }
+            } catch (e) { console.error("Błąd odczytu zapisu", e); }
+            updateCurrencyUI();
+            updateProfileStats();
+        }
+
+        function saveState() {
+            localStorage.setItem('tankCommanderState_WT', JSON.stringify(playerState));
+            updateCurrencyUI();
+            updateProfileStats();
+        }
+
+        function updateCurrencyUI() {
+            document.getElementById('currency-silver').innerText = playerState.silver;
+            document.getElementById('currency-gold').innerText = playerState.gold;
+        }
+
+        function updateProfileStats() {
+            document.getElementById('p-battles').innerText = playerState.battles;
+            const wr = playerState.battles > 0 ? Math.round((playerState.wins / playerState.battles) * 100) : 0;
+            document.getElementById('p-winrate').innerText = wr + "%";
+        }
+
+        // --- SKLEP I INTRO (BEZ ZMIAN) ---
+        setInterval(updateDailyRewardTimer, 1000);
+        function updateShopUI() {
+            const btnStarter = document.getElementById('btn-claim-offer');
+            if (playerState.shopClaimed) {
+                btnStarter.innerText = "ODEBRANO";
+                btnStarter.classList.add('claimed');
+                btnStarter.onclick = null;
+            } else {
+                btnStarter.innerText = "ODBIERZ ZA DARMO";
+                btnStarter.classList.remove('claimed');
+                btnStarter.onclick = claimStarterPack;
+            }
+            updateDailyRewardTimer();
+        }
+        function claimStarterPack() {
+            if (playerState.shopClaimed) return;
+            playerState.silver += 500;
+            playerState.shopClaimed = true;
+            saveState();
+            updateShopUI();
+            alert("Otrzymano 500 biletów!");
+        }
+        function canClaimDaily() {
+            if (!playerState.lastDailyClaim) return true;
+            const now = new Date();
+            const lastClaim = new Date(playerState.lastDailyClaim);
+            const todayReset = new Date();
+            todayReset.setHours(10, 0, 0, 0);
+            if (now < todayReset) { todayReset.setDate(todayReset.getDate() - 1); }
+            return lastClaim < todayReset;
+        }
+        function getNextResetTime() {
+            const now = new Date();
+            const reset = new Date();
+            reset.setHours(10, 0, 0, 0);
+            if (now >= reset) { reset.setDate(reset.getDate() + 1); }
+            return reset;
+        }
+        function updateDailyRewardTimer() {
+            const btn = document.getElementById('btn-claim-daily');
+            const timerLabel = document.getElementById('daily-timer');
+            const shopView = document.getElementById('view-shop');
+            if (shopView.style.display !== 'flex') return;
+            if (canClaimDaily()) {
+                btn.style.display = 'block';
+                btn.innerText = "ODBIERZ NAGRODĘ";
+                btn.classList.remove('claimed');
+                btn.onclick = claimDaily;
+                timerLabel.style.display = 'none';
+            } else {
+                btn.style.display = 'none';
+                timerLabel.style.display = 'block';
+                const nextReset = getNextResetTime();
+                const diff = nextReset - new Date();
+                if(diff < 0) { btn.style.display = 'block'; return; }
+                const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const m = Math.floor((diff / (1000 * 60)) % 60);
+                const s = Math.floor((diff / 1000) % 60);
+                timerLabel.innerText = `ODNOWIENIE ZA: ${h}h ${m}m ${s}s`;
+            }
+        }
+        function claimDaily() {
+            if (!canClaimDaily()) return;
+            playerState.silver += 50;
+            playerState.gold += 10;
+            playerState.lastDailyClaim = Date.now();
+            saveState();
+            updateDailyRewardTimer();
+            alert("Otrzymano: 10 Złota i 50 Biletów!");
+        }
+
+        const loadingBackgrounds = ["https://imgur.com/RgPG6iF.png", "https://imgur.com/qh0cYFD.png", "https://imgur.com/NX2gnDz.png"];
+        const triviaFacts = [
+            "Tygrys I posiadał działo 88mm, pierwotnie przeciwlotnicze.",
+            "T-34 zrewolucjonizował pojęcie pochyłego pancerza.",
+            "Bitwa na Łuku Kurskim była największą bitwą pancerną w historii.",
+            "Sherman Firefly był jedynym alianckim czołgiem zdolnym przebić Tygrysa od frontu."
+        ];
+        let bgInterval, triviaInterval;
+        function runIntro() {
+            const text1 = document.getElementById('intro-text-1');
+            const msfsUI = document.getElementById('msfs-loading-ui');
+            const triviaBox = document.getElementById('trivia-container');
+            const bgDiv = document.getElementById('loading-bg');
+            text1.classList.add('animate-text-slow');
+            setTimeout(() => {
+                text1.style.display = 'none'; msfsUI.style.display = 'flex'; triviaBox.style.display = 'block';
+                startLoadingSequence(bgDiv);
+            }, 4000);
+            setTimeout(() => { finishLoading(); }, 12000);
+        }
+        function startLoadingSequence(bgElement) {
+            let bgIndex = 0;
+            bgElement.style.backgroundImage = `url('${loadingBackgrounds[0]}')`;
+            bgInterval = setInterval(() => {
+                bgIndex = (bgIndex + 1) % loadingBackgrounds.length;
+                bgElement.style.opacity = 0.2;
+                setTimeout(() => {
+                    bgElement.style.backgroundImage = `url('${loadingBackgrounds[bgIndex]}')`;
+                    bgElement.style.opacity = 0.4;
+                }, 1000);
+            }, 5000);
+            updateTrivia();
+            triviaInterval = setInterval(updateTrivia, 5000);
+        }
+        function updateTrivia() {
+            const el = document.getElementById('trivia-text');
+            el.style.opacity = 0;
+            setTimeout(() => {
+                const randomFact = triviaFacts[Math.floor(Math.random() * triviaFacts.length)];
+                el.innerText = `"${randomFact}"`;
+                el.style.opacity = 1;
+            }, 500);
+        }
+        function finishLoading(force = false) {
+            if (bgInterval) clearInterval(bgInterval);
+            if (triviaInterval) clearInterval(triviaInterval);
+            const layer = document.getElementById('intro-layer');
+            layer.style.opacity = 0;
+            setTimeout(() => {
+                layer.style.display = 'none'; layer.remove(); startMusic();
+                setTimeout(initTutorial, 1000);
+            }, 1000);
+        }
+        const bgMusic = document.getElementById('menu-music');
+        const musicHint = document.getElementById('music-hint');
+        bgMusic.volume = 0.15;
+        function startMusic() {
+            bgMusic.play().then(() => { musicHint.style.opacity = 0; }).catch(() => {});
+        }
+        document.addEventListener('click', () => { if (bgMusic.paused) startMusic(); }, { once: true });
+
+        // --- DANE CZOŁGÓW ---
+        const tanks = [
+            {
+                name: "Panzer III Ausf. M",
+                rank: "Ranga III • <img src='https://flagcdn.com/w40/de.png' class='flag-icon'> Niemcy",
+                armor: "50 / 30 / 30 mm",
+                gun: "50 mm KwK 39 L/60",
+                reload: "4.2 s",
+                speed: "53 km/h",
+                pen: "105 mm",
+                img: "https://imgur.com/tKvJCgF.png" 
+            },
+            {
+                name: "T-34 (1942)",
+                rank: "Ranga II • <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_the_Soviet_Union.svg/320px-Flag_of_the_Soviet_Union.svg.png' class='flag-icon'> ZSRR",
+                armor: "45 / 45 / 45 mm",
+                gun: "76 mm F-34",
+                reload: "6.9 s",
+                speed: "55 km/h",
+                pen: "98 mm",
+                img: "https://imgur.com/pwBirJA.png"
+            }
+        ];
+        const upgradeTypes = [
+            { id: 'crew', name: "Szkolenie Załogi" },
+            { id: 'armor', name: "Dodatkowy Pancerz" },
+            { id: 'engine', name: "Filtry Silnika" },
+            { id: 'gun', name: "Mechanizm Obrotu" }
+        ];
+        let currentTankIndex = 0;
+
+        function switchTab(tabName, element) {
+            const tabs = document.querySelectorAll('.menu-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            if(element) element.classList.add('active');
+            const garageElements = document.querySelectorAll('.garage-view-element');
+            const overlays = document.querySelectorAll('.fullscreen-overlay');
+            overlays.forEach(o => o.style.display = 'none');
+            if (tabName === 'garage') {
+                garageElements.forEach(el => { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; });
+                document.getElementById('garage-tank-display').style.display = 'block';
+                renderUpgrades(currentTankIndex);
+            } else {
+                garageElements.forEach(el => { el.style.opacity = '0'; el.style.pointerEvents = 'none'; });
+                const view = document.getElementById('view-' + tabName);
+                if(view) {
+                    if(tabName === 'shop') { view.style.display = 'flex'; updateShopUI(); }
+                    else if(tabName === 'queue') { view.style.display = 'flex'; }
+                    else { view.style.display = 'flex'; }
+                }
+            }
+        }
+
+        function renderUpgrades(tankIdx) {
+            const list = document.getElementById('upgrades-list');
+            list.innerHTML = '';
+            if (tankIdx === 1) { list.innerHTML = '<div style="color:#777;text-align:center;margin-top:20px;">Czołg zablokowany. Ulepszenia niedostępne.</div>'; return; }
+            
+            const tankData = playerState.upgrades[tankIdx];
+            upgradeTypes.forEach(type => {
+                const currentLevel = tankData[type.id];
+                const nextLevel = currentLevel + 1;
+                const isMax = currentLevel >= 4;
+                const cost = isMax ? 0 : upgradeCosts[nextLevel];
+                const canAfford = playerState.silver >= cost;
+                const row = document.createElement('div');
+                row.className = 'upgrade-item';
+                let btnHtml = isMax ? `<button class="upg-btn disabled">MAX</button>` : `<button class="${canAfford ? 'upg-btn' : 'upg-btn disabled'}" ${canAfford ? `onclick="buyUpgrade(${tankIdx}, '${type.id}')"` : ''}>KUP <span class="upg-cost">${cost} 🎫</span></button>`;
+                row.innerHTML = `<div class="upg-info"><span class="upg-name">${type.name}</span><span class="upg-lvl">Poziom ${currentLevel} / 4</span></div>${btnHtml}`;
+                list.appendChild(row);
+            });
+        }
+        function buyUpgrade(tankIdx, typeId) {
+            const currentLevel = playerState.upgrades[tankIdx][typeId];
+            if (currentLevel >= 4) return;
+            const nextLevel = currentLevel + 1;
+            const cost = upgradeCosts[nextLevel];
+            if (playerState.silver >= cost) {
+                playerState.silver -= cost;
+                playerState.upgrades[tankIdx][typeId] = nextLevel;
+                saveState();
+                renderUpgrades(tankIdx);
+            } else { alert("Niewystarczająca ilość Biletów!"); }
+        }
+        function selectTank(index) {
+            if (index === 1) { alert("Ten pojazd jest niedostępny!."); return; }
+            currentTankIndex = index;
+            const data = tanks[index];
+            document.getElementById('tank-name').innerText = data.name;
+            document.getElementById('tank-rank').innerHTML = data.rank;
+            document.getElementById('stat-armor').innerText = data.armor;
+            document.getElementById('stat-gun').innerText = data.gun;
+            document.getElementById('stat-reload').innerText = data.reload;
+            document.getElementById('stat-speed').innerText = data.speed;
+            document.getElementById('stat-pen').innerText = data.pen;
+            document.getElementById('q-tank-name').innerText = data.name;
+
+            const imgEl = document.getElementById('main-tank-img');
+            imgEl.style.opacity = 0;
+            setTimeout(() => { imgEl.src = data.img; imgEl.onload = () => { imgEl.style.opacity = 1; }; }, 200);
+            
+            const slots = document.querySelectorAll('.crew-slot');
+            slots.forEach(s => s.classList.remove('active'));
+            document.getElementById('slot-' + index).classList.add('active');
+            renderUpgrades(index);
+        }
+
+        // --- MATCHMAKING LOGIC (5 SEKUND) ---
+        let queueInterval = null;
+        let slideInterval = null;
+
+        function startQueue() {
+            if(isTutorialActive) closeTutorial();
+            switchTab('queue');
+            document.getElementById('queue-loader').style.display = 'block';
+            document.getElementById('btn-exit-queue').style.display = 'inline-block';
+            let currentPlayers = 1;
+            document.getElementById('player-count').innerText = currentPlayers;
+
+            let slideIdx = 1;
+            const slides = document.querySelectorAll('.slide-img');
+            if(slideInterval) clearInterval(slideInterval);
+            slideInterval = setInterval(() => {
+                slides.forEach(s => s.classList.remove('active'));
+                slideIdx = (slideIdx + 1) % 3;
+                slides[slideIdx].classList.add('active');
+            }, 3000);
+
+            // 5000 ms = 5 sekund
+            const totalDuration = 5000;
+            const stepTime = totalDuration / 19; 
+
+            if (queueInterval) clearInterval(queueInterval);
+            queueInterval = setInterval(() => {
+                currentPlayers++;
+                document.getElementById('player-count').innerText = Math.min(currentPlayers, 20);
+                if (currentPlayers >= 20) {
+                    clearInterval(queueInterval);
+                    clearInterval(slideInterval);
+                    enterBattle();
+                }
+            }, stepTime);
+        }
+
+        function exitQueue() {
+            if (queueInterval) clearInterval(queueInterval);
+            if (slideInterval) clearInterval(slideInterval);
+            switchTab('garage');
+        }
+
+        function enterBattle() {
+            document.getElementById('view-queue').style.display = 'none';
+            document.querySelector('.ui-layer').style.display = 'none';
+            document.querySelector('.garage-background').style.display = 'none';
+            document.getElementById('garage-tank-display').style.display = 'none';
+            initGame();
+        }
+
+        // --- SILNIK GRY (BATTLE ENGINE) ---
+        const GAME_CONFIG = {
+            chunkSize: 100,
+            mapW: 20, mapH: 20, 
+            playerSpeed: 1.5, // 50% wolniej
+            rotationSpeed: 0.03, // Realistyczne obracanie
+            playerReload: 3000,
+            playerHP: 1000, // Bardzo dużo HP
+            botHP: 50,     // 1 strzał
+            botDmg: 50,
+            playerDmg: 100
+        };
+
+        const botNames = ["Filipek", "Ignacy", "Aleksander II", "Kuba", "Dominik", "BOT1", "BOT2", "BOT3", "BOT4", "BOT5"];
+
+        let gameState = {
+            active: false,
+            player: { x: 1000, y: 1000, hp: 1000, angle: 0, lastShot: 0 },
+            keys: { w: false, s: false, a: false, d: false },
+            mouse: { x: 0, y: 0 },
+            enemies: [],
+            allies: [],
+            bullets: [],
+            trees: [],
+        };
+
+        function initGame() {
+            const layer = document.getElementById('game-layer');
+            const world = document.getElementById('game-world');
+            layer.style.display = 'block';
+            
+            world.innerHTML = '';
+            for(let y=0; y<GAME_CONFIG.mapH; y++) {
+                for(let x=0; x<GAME_CONFIG.mapW; x++) {
+                    const chunk = document.createElement('div');
+                    chunk.className = 'game-chunk';
+                    chunk.style.left = (x * GAME_CONFIG.chunkSize) + 'px';
+                    chunk.style.top = (y * GAME_CONFIG.chunkSize) + 'px';
+                    world.appendChild(chunk);
+                }
+            }
+
+            gameState.active = true;
+            gameState.player = { x: 1000, y: 1000, hp: GAME_CONFIG.playerHP, angle: -Math.PI/2, lastShot: 0 };
+            gameState.bullets = [];
+            gameState.enemies = [];
+            gameState.allies = [];
+            gameState.trees = [];
+
+            createEntityDOM('player', 'tank-player entity-tank', 1000, 1000);
+
+            for(let i=0; i<9; i++) spawnUnit('ally');
+            for(let i=0; i<10; i++) spawnUnit('enemy');
+            for(let i=0; i<40; i++) {
+                const tx = Math.random() * 1900;
+                const ty = Math.random() * 1900;
+                createEntityDOM('tree-' + i, 'entity-tree', tx, ty);
+                gameState.trees.push({id: 'tree-' + i, x: tx, y: ty});
+            }
+
+            document.getElementById('screen-win').style.display = 'none';
+            document.getElementById('screen-lose').style.display = 'none';
+            updateHUD();
+
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('keyup', handleKeyUp);
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mousedown', handleMouseDown);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnUnit(type) {
+            const id = type + '-' + Math.random().toString(36).substr(2, 9);
+            let x, y;
+            do {
+                x = Math.random() * 1800 + 100;
+                y = Math.random() * 1800 + 100;
+            } while (Math.abs(x - 1000) < 300 && Math.abs(y - 1000) < 300);
+
+            const unit = {
+                id: id, type: type, x: x, y: y, hp: GAME_CONFIG.botHP,
+                lastShot: 0, name: botNames[Math.floor(Math.random() * botNames.length)],
+                angle: Math.random() * Math.PI * 2
+            };
+            if(type === 'enemy') gameState.enemies.push(unit);
+            else gameState.allies.push(unit);
+            createEntityDOM(id, `entity-tank tank-${type} ${type === 'enemy' ? 'enemy-hp' : ''}`, x, y, unit.name);
+        }
+
+        function createEntityDOM(id, className, x, y, name = null) {
+            const el = document.createElement('div');
+            el.id = 'ent-' + id;
+            el.className = 'game-entity ' + className;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            if(id !== 'player' && !id.startsWith('tree')) {
+                const hpCont = document.createElement('div');
+                hpCont.className = 'hp-bar-container';
+                const hpFill = document.createElement('div');
+                hpFill.className = 'hp-fill';
+                hpFill.id = 'hp-' + id;
+                hpCont.appendChild(hpFill);
+                el.appendChild(hpCont);
+                const nameTag = document.createElement('div');
+                nameTag.className = 'unit-name';
+                nameTag.innerText = name || "Bot";
+                el.appendChild(nameTag);
+            }
+            document.getElementById('game-world').appendChild(el);
+        }
+
+        function handleKeyDown(e) {
+            if(e.key === 'w' || e.key === 'W') gameState.keys.w = true;
+            if(e.key === 's' || e.key === 'S') gameState.keys.s = true;
+            if(e.key === 'a' || e.key === 'A') gameState.keys.a = true;
+            if(e.key === 'd' || e.key === 'D') gameState.keys.d = true;
+        }
+        function handleKeyUp(e) {
+            if(e.key === 'w' || e.key === 'W') gameState.keys.w = false;
+            if(e.key === 's' || e.key === 'S') gameState.keys.s = false;
+            if(e.key === 'a' || e.key === 'A') gameState.keys.a = false;
+            if(e.key === 'd' || e.key === 'D') gameState.keys.d = false;
+        }
+        function handleMouseMove(e) {
+            gameState.mouse.x = e.clientX;
+            gameState.mouse.y = e.clientY;
+        }
+        function handleMouseDown(e) {
+            if(!gameState.active) return;
+            const now = Date.now();
+            if(now - gameState.player.lastShot > GAME_CONFIG.playerReload) {
+                // Gracz strzela tam gdzie celuje myszka, niezależnie od obrotu kadłuba
+                // Obliczamy kąt wieży (myszki)
+                const screenCenterX = window.innerWidth / 2;
+                const screenCenterY = window.innerHeight / 2;
+                const turretAngle = Math.atan2(gameState.mouse.y - screenCenterY, gameState.mouse.x - screenCenterX);
+                
+                fireBullet(gameState.player, 'player', turretAngle);
+                gameState.player.lastShot = now;
+                animateReload();
+            }
+        }
+
+        function animateReload() {
+            const bar = document.getElementById('hud-reload');
+            const txt = document.getElementById('hud-reload-text');
+            bar.style.width = '0%'; bar.style.transition = 'none';
+            txt.innerText = "PRZEŁADOWYWANIE..."; txt.style.color = "#d32f2f";
+            void bar.offsetWidth;
+            bar.style.transition = `width ${GAME_CONFIG.playerReload}ms linear`;
+            bar.style.width = '100%';
+            setTimeout(() => { txt.innerText = "GOTOWY"; txt.style.color = "#fff"; }, GAME_CONFIG.playerReload);
+        }
+
+        // --- KOLIZJE CZOŁGÓW ---
+        function checkTankCollision(x, y, selfId) {
+            const allUnits = [...gameState.enemies, ...gameState.allies];
+            if(selfId !== 'player') allUnits.push(gameState.player);
+
+            for (let unit of allUnits) {
+                if (unit.id === selfId) continue; // Pomiń siebie (dla botów)
+                // Dystans euklidesowy
+                const dist = Math.hypot(x - unit.x, y - unit.y);
+                // 45px to bezpieczny margines (czołgi mają 50px)
+                if (dist < 45) return true; 
+            }
+            // Sprawdź gracza jeśli selfId to nie gracz (już zrobione wyżej przez dodanie do allUnits)
+            // Ale dla pewności dodajmy drzewa, choć są tłem w tym trybie (przejezdne)
+            return false;
+        }
+
+        function gameLoop() {
+            if(!gameState.active) return;
+
+            // --- RUCH GRACZA (REALISTYCZNY) ---
+            let speed = 0;
+            if(gameState.keys.w) speed = GAME_CONFIG.playerSpeed;
+            else if(gameState.keys.s) speed = -GAME_CONFIG.playerSpeed;
+
+            if(gameState.keys.a) gameState.player.angle -= GAME_CONFIG.rotationSpeed;
+            if(gameState.keys.d) gameState.player.angle += GAME_CONFIG.rotationSpeed;
+
+            // Oblicz nową pozycję
+            const nextX = gameState.player.x + Math.cos(gameState.player.angle) * speed;
+            const nextY = gameState.player.y + Math.sin(gameState.player.angle) * speed;
+
+            // Sprawdź granice i kolizje
+            if (nextX > 0 && nextX < 1950 && nextY > 0 && nextY < 1950) {
+                if(!checkTankCollision(nextX, nextY, 'player')) {
+                    gameState.player.x = nextX;
+                    gameState.player.y = nextY;
+                }
+            }
+
+            // --- RENDEROWANIE GRACZA ---
+            const pEl = document.getElementById('ent-player');
+            pEl.style.left = gameState.player.x + 'px';
+            pEl.style.top = gameState.player.y + 'px';
+            // +90 bo grafika skierowana w górę
+            pEl.style.transform = `rotate(${gameState.player.angle * 180 / Math.PI + 90}deg)`;
+
+            // --- KAMERA ---
+            const screenCenterX = window.innerWidth / 2;
+            const screenCenterY = window.innerHeight / 2;
+            const camX = -gameState.player.x + screenCenterX - 25;
+            const camY = -gameState.player.y + screenCenterY - 25;
+            document.getElementById('game-world').style.transform = `translate(${camX}px, ${camY}px)`;
+
+            // --- BOTY ---
+            moveBots(gameState.enemies, 'enemy');
+            moveBots(gameState.allies, 'ally');
+
+            // --- POCISKI ---
+            updateBullets();
+            updateHUD();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function moveBots(list, type) {
+            const now = Date.now();
+            list.forEach(bot => {
+                let targetX, targetY;
+                
+                if(type === 'enemy') {
+                    // Wróg celuje w gracza
+                    targetX = gameState.player.x;
+                    targetY = gameState.player.y;
+                } else {
+                    // Sojusznik jeździ losowo lub za graczem (uproszczone: losowy punkt)
+                    if(!bot.targetX || Math.random() < 0.01) {
+                        bot.targetX = Math.random() * 1900;
+                        bot.targetY = Math.random() * 1900;
+                    }
+                    targetX = bot.targetX;
+                    targetY = bot.targetY;
+                }
+
+                // Kąt do celu
+                const targetAngle = Math.atan2(targetY - bot.y, targetX - bot.x);
+                
+                // Obracanie bota w stronę celu
+                let diff = targetAngle - bot.angle;
+                // Normalizacja kąta
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+
+                if (Math.abs(diff) > 0.1) {
+                    bot.angle += Math.sign(diff) * GAME_CONFIG.rotationSpeed;
+                }
+
+                // Ruch do przodu (jeśli w miare wycelowany)
+                let speed = 0;
+                if(Math.abs(diff) < 1.0) speed = GAME_CONFIG.playerSpeed * 0.8; // Boty ciut wolniejsze
+
+                const nextX = bot.x + Math.cos(bot.angle) * speed;
+                const nextY = bot.y + Math.sin(bot.angle) * speed;
+
+                // Kolizje botów
+                if (nextX > 0 && nextX < 1950 && nextY > 0 && nextY < 1950) {
+                     if(!checkTankCollision(nextX, nextY, bot.id)) {
+                        bot.x = nextX;
+                        bot.y = nextY;
+                    }
+                }
+
+                // Render bota
+                const el = document.getElementById('ent-' + bot.id);
+                if(el) {
+                    el.style.left = bot.x + 'px';
+                    el.style.top = bot.y + 'px';
+                    el.style.transform = `rotate(${bot.angle * 180 / Math.PI + 90}deg)`;
+                }
+
+                // Strzelanie
+                if(type === 'enemy') {
+                    const dist = Math.hypot(gameState.player.x - bot.x, gameState.player.y - bot.y);
+                    // Rzadziej strzelają (8000ms) i muszą być blisko (500px)
+                    if(dist < 500 && now - bot.lastShot > 8000) {
+                        fireBullet(bot, 'enemy', bot.angle);
+                        bot.lastShot = now;
+                    }
+                }
+            });
+        }
+
+        function fireBullet(shooter, type, forceAngle) {
+            const bx = shooter.x + 25 + Math.cos(forceAngle) * 35;
+            const by = shooter.y + 25 + Math.sin(forceAngle) * 35;
+            const bullet = {
+                id: 'b-' + Math.random(),
+                x: bx, y: by,
+                vx: Math.cos(forceAngle) * 10,
+                vy: Math.sin(forceAngle) * 10,
+                owner: type
+            };
+            gameState.bullets.push(bullet);
+            const bel = document.createElement('div');
+            bel.className = 'game-entity entity-bullet';
+            bel.id = bullet.id;
+            document.getElementById('game-world').appendChild(bel);
+        }
+
+        function updateBullets() {
+            for(let i = gameState.bullets.length - 1; i >= 0; i--) {
+                const b = gameState.bullets[i];
+                b.x += b.vx;
+                b.y += b.vy;
+                const bel = document.getElementById(b.id);
+                if(bel) { bel.style.left = b.x + 'px'; bel.style.top = b.y + 'px'; }
+
+                if(b.x < 0 || b.x > 2000 || b.y < 0 || b.y > 2000) { removeBullet(i); continue; }
+
+                if(b.owner === 'player') {
+                    for(let j=gameState.enemies.length-1; j>=0; j--) {
+                        const en = gameState.enemies[j];
+                        if(checkHit(b, en)) {
+                            damageUnit(en, GAME_CONFIG.playerDmg, j, 'enemy');
+                            removeBullet(i);
+                            break;
+                        }
+                    }
+                } else if(b.owner === 'enemy') {
+                    if(checkHit(b, gameState.player)) {
+                        damagePlayer(GAME_CONFIG.botDmg);
+                        removeBullet(i);
+                    }
+                }
+            }
+        }
+
+        function checkHit(bullet, unit) {
+            return (bullet.x > unit.x && bullet.x < unit.x + 50 && bullet.y > unit.y && bullet.y < unit.y + 50);
+        }
+        function removeBullet(index) {
+            const b = gameState.bullets[index];
+            const el = document.getElementById(b.id);
+            if(el) el.remove();
+            gameState.bullets.splice(index, 1);
+        }
+        function damageUnit(unit, dmg, index, type) {
+            unit.hp -= dmg;
+            const bar = document.getElementById('hp-' + unit.id);
+            if(bar) bar.style.width = (unit.hp / GAME_CONFIG.botHP * 100) + '%';
+            if(unit.hp <= 0) {
+                const el = document.getElementById('ent-' + unit.id);
+                if(el) el.remove();
+                if(type === 'enemy') {
+                    gameState.enemies.splice(index, 1);
+                    if(gameState.enemies.length === 0) endGame(true);
+                } else { gameState.allies.splice(index, 1); }
+            }
+        }
+        function damagePlayer(dmg) {
+            gameState.player.hp -= dmg;
+            if(gameState.player.hp <= 0) { gameState.player.hp = 0; endGame(false); }
+        }
+        function updateHUD() {
+            document.getElementById('hud-enemies-left').innerText = gameState.enemies.length;
+            document.getElementById('hud-hp').innerText = `${gameState.player.hp} / ${GAME_CONFIG.playerHP}`;
+        }
+        function endGame(win) {
+            gameState.active = false;
+            playerState.battles++;
+            if(win) {
+                playerState.wins++;
+                playerState.silver += 100;
+                document.getElementById('screen-win').style.display = 'flex';
+            } else {
+                document.getElementById('screen-lose').style.display = 'flex';
+            }
+            saveState();
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mousedown', handleMouseDown);
+        }
+        function closeGame(win) {
+            document.getElementById('game-layer').style.display = 'none';
+            document.querySelector('.ui-layer').style.display = 'flex';
+            document.querySelector('.garage-background').style.display = 'block';
+            document.getElementById('garage-tank-display').style.display = 'block';
+            switchTab('garage');
+            location.reload(); 
+        }
+
+        window.onload = () => { loadState(); selectTank(0); runIntro(); };
+        const tutorialSteps = [
+            { text: "Dowódco! Witam w hangarze. To Twój punkt dowodzenia przed bitwą.", highlight: null },
+            { text: "W sekcji SKLEP odbierzesz codzienny przydział zaopatrzenia. Sprawdzaj go regularnie!", highlight: "ui-top-bar" },
+            { text: "Po prawej masz panel modyfikacji. Inwestuj bilety w ulepszenia czołgu, aby zyskać przewagę.", highlight: "garage-upgrades" },
+            { text: "T-34 jest zablokowany. Ruszaj do boju Panzerem, aby zdobyć doświadczenie!", highlight: "garage-slots" },
+            { text: "Naciśnij DO BOJU. Sterowanie: W/S - jazda, A/D - obrót, Mysz - strzał.", highlight: "ui-battle-btn" }
+        ];
+        let currentStepIndex = 0; let isTyping = false; let typeTimeout; let isTutorialActive = false;
+        function initTutorial() { document.getElementById('tutorial-container').classList.add('visible'); isTutorialActive = true; renderStep(); }
+        function closeTutorial() { document.getElementById('tutorial-container').classList.remove('visible'); removeHighlight(); isTutorialActive = false; }
+        function nextTutorialStep() { if (isTyping) { finishTypingImmediately(); return; } currentStepIndex++; if (currentStepIndex >= tutorialSteps.length) { closeTutorial(); return; } renderStep(); }
+        function removeHighlight() { document.querySelectorAll('.highlight-tutorial').forEach(el => el.classList.remove('highlight-tutorial')); }
+        function renderStep() {
+            removeHighlight(); const step = tutorialSteps[currentStepIndex];
+            document.getElementById('t-step-counter').innerText = `Samouczek (${currentStepIndex + 1} / 5)`;
+            if (step.highlight) { const el = document.getElementById(step.highlight); if (el) el.classList.add('highlight-tutorial'); }
+            const textBox = document.getElementById('t-text'); textBox.innerText = "";
+            let charIndex = 0; isTyping = true;
+            function typeWriter() { if (!isTutorialActive) return; if (charIndex < step.text.length) { textBox.innerText += step.text.charAt(charIndex); charIndex++; typeTimeout = setTimeout(typeWriter, 30); } else { isTyping = false; } }
+            clearTimeout(typeTimeout); typeWriter();
+        }
+        function finishTypingImmediately() { clearTimeout(typeTimeout); document.getElementById('t-text').innerText = tutorialSteps[currentStepIndex].text; isTyping = false; }
+    </script>
+</body>
+</html>
