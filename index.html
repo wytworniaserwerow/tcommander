@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tank Commander - BETA</title>
+    <title>Tank Commander - v2.1 </title>
     <style>
         /* IMPORT CZCIONKI ROBOTO (KLIMAT WT) */
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap');
-
+        
         /* RESET I PODSTAWY */
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; outline: none; }
         body {
@@ -63,7 +63,8 @@
         .loading-label { font-size: 24px; font-weight: 300; text-transform: uppercase; letter-spacing: 2px; color: #fff; }
         
         #trivia-container { position: absolute; bottom: 50px; left: 50px; max-width: 600px; z-index: 20; display: none; }
-        .trivia-title { color: #ffae00; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .trivia-title { color: #ffae00; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
         .trivia-title::before { content: ''; display: block; width: 30px; height: 2px; background: #ffae00; }
         .trivia-text { font-size: 18px; line-height: 1.5; color: #ddd; font-style: italic; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); opacity: 0; transition: opacity 1s; }
         #skip-intro { position: absolute; top: 20px; right: 20px; color: #555; font-size: 10px; cursor: pointer; z-index: 100; }
@@ -179,29 +180,14 @@
             border: 1px solid #e67e22; background: linear-gradient(180deg, #3a3a3a 0%, #252525 100%);
             box-shadow: inset 0 0 10px rgba(230, 126, 34, 0.2);
         }
-        /* ZABLOKOWANY T-34 */
-        .crew-slot.locked {
-            filter: grayscale(1) brightness(0.7);
-            cursor: not-allowed;
-            opacity: 0.8;
-        }
-        .crew-slot.locked:hover {
-            border-color: #d32f2f;
-        }
-        .crew-slot.locked::after {
-            content: '🔒';
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 30px; z-index: 10;
-        }
+        .crew-slot.locked { filter: grayscale(1) brightness(0.7); cursor: not-allowed; opacity: 0.8; }
+        .crew-slot.locked:hover { border-color: #d32f2f; }
+        .crew-slot.locked::after { content: '🔒'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; z-index: 10; }
 
         .slot-img { width: 90%; height: 55px; background-size: cover; background-position: center; margin-bottom: 5px; filter: grayscale(0.7) contrast(1.2); transition: filter 0.2s; }
         .crew-slot.active .slot-img { filter: grayscale(0) contrast(1.1); }
         .slot-name { font-size: 12px; color: #ccc; font-weight: bold; text-transform: uppercase; }
-        .slot-br { 
-            position: absolute; top: 4px; right: 4px; 
-            font-size: 10px; background: #111; padding: 2px 5px; border-radius: 2px; 
-            border: 1px solid #444; color: #aaa;
-        }
+        .slot-br { position: absolute; top: 4px; right: 4px; font-size: 10px; background: #111; padding: 2px 5px; border-radius: 2px; border: 1px solid #444; color: #aaa; }
 
         /* --- SKLEP I INNE GRIDY --- */
         .fullscreen-overlay {
@@ -323,12 +309,8 @@
             font-family: 'Roboto Condensed', sans-serif;
         }
         
-        #game-camera {
-            width: 100%; height: 100%; position: relative; overflow: hidden;
-        }
-        #game-world {
-            position: absolute; width: 2000px; height: 2000px;
-        }
+        #game-camera { width: 100%; height: 100%; position: relative; overflow: hidden; }
+        #game-world { position: absolute; width: 2000px; height: 2000px; }
         
         .game-chunk {
             position: absolute; width: 100px; height: 100px;
@@ -342,13 +324,19 @@
             background-repeat: no-repeat; background-size: contain; background-position: center;
         }
         
-        .entity-tank {
-            background-image: url('https://imgur.com/y74Hb83.png');
-            transition: none; /* Ważne dla płynnego ruchu JS */
+        .entity-tank { background-image: url('https://imgur.com/y74Hb83.png'); transition: none; }
+        
+        /* ZMIANA: Sojusznicy mają teraz to samo zdjęcie co gracz */
+        .tank-ally { 
+            background-image: url('https://imgur.com/y74Hb83.png'); /* To samo co gracz */
+            filter: none;
         }
-
-        .tank-ally { filter: hue-rotate(200deg) brightness(1.2); }
-        .tank-enemy { filter: hue-rotate(0deg) saturate(1.5) brightness(0.8); }
+        
+        .tank-enemy { 
+            background-image: url('https://imgur.com/3q8JLFU.png'); 
+            filter: none;
+        }
+        
         .tank-player { filter: none; } 
 
         .entity-tree {
@@ -357,47 +345,82 @@
             z-index: 100; pointer-events: none;
         }
         
+        .entity-obstacle {
+            z-index: 55; /* Między ziemią a czołgami */
+            background-size: contain; background-repeat: no-repeat;
+        }
+
         .entity-bullet {
             width: 6px; height: 6px; background: #fff; border-radius: 50%;
             box-shadow: 0 0 5px #ffae00; z-index: 60;
         }
 
         .hp-bar-container {
-            position: absolute; top: -15px; left: -10px; width: 70px; height: 6px;
-            background: #333; border: 1px solid #000; pointer-events: none; z-index: 110;
+            position: absolute; top: -18px; left: -10px; width: 70px; height: 8px;
+            background: #222; border-radius: 4px; pointer-events: none; z-index: 110;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 1px solid #000;
         }
-        .hp-fill { height: 100%; background: #0f0; transition: width 0.2s; }
-        .enemy-hp .hp-fill { background: #d32f2f; }
+        .hp-fill { 
+            height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a); 
+            transition: width 0.2s; border-radius: 4px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .enemy-hp .hp-fill { background: linear-gradient(90deg, #d32f2f, #f44336); }
+        
+        /* ZMIANA: Niebieski pasek dla sojuszników */
+        .ally-hp .hp-fill { 
+            background: linear-gradient(90deg, #2196f3, #64b5f6); 
+            box-shadow: 0 0 5px #2196f3;
+        }
+        
         .unit-name {
-            position: absolute; top: -30px; left: -20px; width: 90px;
+            position: absolute; top: -32px; left: -20px; width: 90px;
             text-align: center; font-size: 10px; color: #fff; text-shadow: 1px 1px 2px #000;
             font-weight: bold; pointer-events: none; z-index: 110;
         }
 
-        #game-hud {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 600;
-        }
-        .hud-top {
-            position: absolute; top: 20px; width: 100%; text-align: center;
-        }
-        .enemy-counter {
-            background: rgba(0,0,0,0.6); color: #fff; padding: 10px 30px;
-            border: 1px solid #d32f2f; border-top: 4px solid #d32f2f;
-            font-size: 24px; font-weight: bold; display: inline-block;
-        }
+        #game-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 600; }
         
+        /* ZMIANA: Nowy wygląd licznika wrogów i sojuszników */
+        .hud-top { 
+            position: absolute; top: 0; width: 100%; display: flex; justify-content: center;
+        }
+        .hud-counters {
+            display: flex; gap: 30px; 
+            background: rgba(10, 10, 15, 0.9);
+            padding: 15px 40px;
+            border-bottom: 2px solid #555;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+        }
+        .counter-box {
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .counter-label {
+            font-size: 10px; text-transform: uppercase; color: #aaa; letter-spacing: 2px; margin-bottom: 2px; font-weight: bold;
+        }
+        .counter-val {
+            font-size: 28px; font-weight: bold; font-family: 'Roboto Condensed', sans-serif;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .c-enemy { color: #ef5350; }
+        .c-ally { color: #42a5f5; }
+
         .hud-bottom {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 20px; align-items: center;
         }
         .player-status-box {
-            background: rgba(0,0,0,0.7); padding: 15px; border: 1px solid #555;
-            display: flex; flex-direction: column; align-items: center; min-width: 200px;
+            background: linear-gradient(to top, rgba(10,10,10,0.9), rgba(30,30,30,0.8));
+            padding: 15px 25px; border: 1px solid #555; border-radius: 4px;
+            display: flex; flex-direction: column; align-items: center; min-width: 220px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
         }
-        .status-label { font-size: 12px; color: #aaa; margin-bottom: 5px; }
-        .status-val { font-size: 20px; font-weight: bold; color: #fff; }
-        .reload-bar { width: 100%; height: 5px; background: #333; margin-top: 5px; }
-        .reload-fill { width: 100%; height: 100%; background: #ffae00; transition: width 0.1s linear; }
+        .status-label { font-size: 11px; color: #aaa; margin-bottom: 5px; letter-spacing: 1px; font-weight: bold; }
+        .status-val { font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .reload-bar { width: 100%; height: 6px; background: #333; margin-top: 5px; border-radius: 3px; overflow: hidden; }
+        .reload-fill { width: 100%; height: 100%; background: #ffae00; transition: width 0.1s linear; box-shadow: 0 0 10px #ffae00; }
 
         .end-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -448,7 +471,7 @@
     <div id="view-shop" class="fullscreen-overlay">
         <div class="shop-container">
             <div class="shop-card daily">
-                <img src="https://placehold.co/140x100/FFD700/000?text=ZŁOTO" class="shop-img" alt="Reward">
+               <img src="https://placehold.co/140x100/FFD700/000?text=ZŁOTO" class="shop-img" alt="Reward">
                 <div class="shop-content">
                     <div class="shop-title">Codzienny Przydział</div>
                     <div class="shop-desc">Zawiera 10 Złota i 50 Punktów Ulepszeń. Odnawia się codziennie o 10:00.</div>
@@ -483,7 +506,7 @@
             <div class="shop-card locked">
                 <img src="https://placehold.co/140x100/388e3c/FFF?text=CAMO" class="shop-img" alt="Camo">
                 <div class="shop-content">
-                    <div class="shop-title">Kamuflaż "Tundra"</div>
+                     <div class="shop-title">Kamuflaż "Tundra"</div>
                     <div class="shop-desc">Zwiększa maskowanie o 5% na mapach zimowych.</div>
                     <button class="shop-btn locked-btn">KUP (Zablokowane)</button>
                 </div>
@@ -508,21 +531,21 @@
     <div id="view-queue" class="fullscreen-overlay" style="z-index: 200;">
          <div class="queue-container">
             <div class="queue-title">Wyszukiwanie bitwy...</div>
-            <div class="queue-info-box">
+             <div class="queue-info-box">
                 <div>Czołg: <span id="q-tank-name" style="color:#e67e22">Panzer III</span></div>
                 <div>Mapa: <span style="color:#2196f3">#001</span></div>
                 <div>Tryb: <span style="color:#d32f2f">Dominacja</span></div>
             </div>
 
             <div class="queue-slideshow">
-                <img src="https://imgur.com/RgPG6iF.png" class="slide-img active" id="slide-1">
-                <img src="https://imgur.com/qh0cYFD.png" class="slide-img" id="slide-2">
-                <img src="https://imgur.com/NX2gnDz.png" class="slide-img" id="slide-3">
+                <img src="https://imgur.com/zyxOcHB.png" class="slide-img active" id="slide-1">
+                <img src="https://imgur.com/8KLY1iu.png" class="slide-img" id="slide-2">
+                <img src="https://imgur.com/zyxOcHB.png" class="slide-img" id="slide-3">
             </div>
 
              <div class="queue-counter">
-                <span id="player-count">1</span><span class="queue-max">/ 20</span>
-            </div>
+                <span id="player-count">1</span><span class="queue-max">/ 40</span>
+             </div>
             <div id="queue-loader" class="loader"></div>
             
             <button id="btn-exit-queue" class="btn-exit" onclick="exitQueue()">ANULUJ</button>
@@ -540,7 +563,7 @@
 
             <button class="battle-btn" id="ui-battle-btn" onclick="startQueue()">DO BOJU!</button>
 
-            <div class="currency">
+             <div class="currency">
                  <span class="silver-lions" title="Punkty Ulepszeń">🎫 <span id="currency-silver">0</span></span>
                 <span class="golden-eagles" title="Złoto">📀 <span id="currency-gold">0</span></span>
             </div>
@@ -548,7 +571,7 @@
 
         <aside id="garage-stats" class="stats-panel garage-view-element panel-box">
              <div id="tank-name" class="vehicle-name">Panzer III</div>
-            <div id="tank-rank" class="vehicle-rank"></div>
+             <div id="tank-rank" class="vehicle-rank"></div>
             <div class="stat-row">
                 <span class="stat-label">Pancerz (kadłub):</span>
                 <span class="stat-value" id="stat-armor">...</span>
@@ -578,14 +601,14 @@
 
         <footer id="garage-slots" class="bottom-bar garage-view-element">
              <div class="crew-slot active" id="slot-0" onclick="selectTank(0)">
-                <span class="slot-br">BR 5.7</span>
+                 <span class="slot-br">BR 5.7</span>
                 <div class="slot-img" style="background-image: url('https://imgur.com/tKvJCgF.png');"></div>
                 <div class="slot-name">Panzer III</div>
             </div>
 
             <div class="crew-slot locked" id="slot-1" onclick="selectTank(1)">
                 <span class="slot-br">BR 5.3</span>
-                <div class="slot-img" style="background-image: url('https://imgur.com/pwBirJA.png');"></div>
+                 <div class="slot-img" style="background-image: url('https://imgur.com/pwBirJA.png');"></div>
                 <div class="slot-name">T-34 (Zablokowany)</div>
             </div>
         </footer>
@@ -594,12 +617,21 @@
     <div id="game-layer">
         <div id="game-camera">
             <div id="game-world">
-                </div>
+            </div>
         </div>
         
         <div id="game-hud">
             <div class="hud-top">
-                <div class="enemy-counter">CELE: <span id="hud-enemies-left">10</span></div>
+                <div class="hud-counters">
+                    <div class="counter-box">
+                        <span class="counter-label">Wrogowie</span>
+                        <span class="counter-val c-enemy" id="hud-enemies-count">10</span>
+                    </div>
+                    <div class="counter-box">
+                        <span class="counter-label">Sojusznicy</span>
+                        <span class="counter-val c-ally" id="hud-allies-count">9</span>
+                    </div>
+                </div>
             </div>
             <div class="hud-bottom">
                 <div class="player-status-box">
@@ -618,7 +650,7 @@
             <div class="end-title win-text">ZWYCIĘSTWO!</div>
             <div class="queue-info-box">Wrogie siły zneutralizowane.</div>
             <button class="battle-btn end-btn" onclick="closeGame(true)">POWRÓT DO BAZY</button>
-        </div>
+         </div>
         
         <div id="screen-lose" class="end-screen">
             <div class="end-title lose-text">PORAŻKA</div>
@@ -629,14 +661,14 @@
 
     <div id="tutorial-container">
          <img src="https://imgur.com/lKsRi6s.png" alt="Olek Soldier" class="soldier-img">
-        <div class="tutorial-box">
+         <div class="tutorial-box">
             <div class="t-header">
                 <span class="t-name">Olek</span>
                 <span class="t-step" id="t-step-counter">Samouczek (1 / 5)</span>
             </div>
             <div class="t-content cursor-blink" id="t-text"></div>
             <div class="t-buttons">
-                <button class="t-btn" onclick="closeTutorial()">Pomiń</button>
+                 <button class="t-btn" onclick="closeTutorial()">Pomiń</button>
                 <button class="t-btn t-btn-next" onclick="nextTutorialStep()">Dalej ➞</button>
             </div>
          </div>
@@ -657,7 +689,6 @@
             }
         };
         const upgradeCosts = { 2: 200, 3: 350, 4: 500 };
-
         function loadState() {
             try {
                 const saved = localStorage.getItem('tankCommanderState_WT');
@@ -694,7 +725,7 @@
             document.getElementById('p-winrate').innerText = wr + "%";
         }
 
-        // --- SKLEP I INTRO (BEZ ZMIAN) ---
+        // --- SKLEP I INTRO ---
         setInterval(updateDailyRewardTimer, 1000);
         function updateShopUI() {
             const btnStarter = document.getElementById('btn-claim-offer');
@@ -766,7 +797,7 @@
             alert("Otrzymano: 10 Złota i 50 Biletów!");
         }
 
-        const loadingBackgrounds = ["https://imgur.com/RgPG6iF.png", "https://imgur.com/qh0cYFD.png", "https://imgur.com/NX2gnDz.png"];
+        const loadingBackgrounds = ["https://imgur.com/zyxOcHB.png", "https://imgur.com/8KLY1iu.png"];
         const triviaFacts = [
             "Tygrys I posiadał działo 88mm, pierwotnie przeciwlotnicze.",
             "T-34 zrewolucjonizował pojęcie pochyłego pancerza.",
@@ -826,7 +857,7 @@
             bgMusic.play().then(() => { musicHint.style.opacity = 0; }).catch(() => {});
         }
         document.addEventListener('click', () => { if (bgMusic.paused) startMusic(); }, { once: true });
-
+        
         // --- DANE CZOŁGÓW ---
         const tanks = [
             {
@@ -895,6 +926,7 @@
                 const row = document.createElement('div');
                 row.className = 'upgrade-item';
                 let btnHtml = isMax ? `<button class="upg-btn disabled">MAX</button>` : `<button class="${canAfford ? 'upg-btn' : 'upg-btn disabled'}" ${canAfford ? `onclick="buyUpgrade(${tankIdx}, '${type.id}')"` : ''}>KUP <span class="upg-cost">${cost} 🎫</span></button>`;
+                
                 row.innerHTML = `<div class="upg-info"><span class="upg-name">${type.name}</span><span class="upg-lvl">Poziom ${currentLevel} / 4</span></div>${btnHtml}`;
                 list.appendChild(row);
             });
@@ -927,14 +959,13 @@
             const imgEl = document.getElementById('main-tank-img');
             imgEl.style.opacity = 0;
             setTimeout(() => { imgEl.src = data.img; imgEl.onload = () => { imgEl.style.opacity = 1; }; }, 200);
-            
             const slots = document.querySelectorAll('.crew-slot');
             slots.forEach(s => s.classList.remove('active'));
             document.getElementById('slot-' + index).classList.add('active');
             renderUpgrades(index);
         }
 
-        // --- MATCHMAKING LOGIC (5 SEKUND) ---
+        // --- MATCHMAKING LOGIC ---
         let queueInterval = null;
         let slideInterval = null;
 
@@ -951,19 +982,18 @@
             if(slideInterval) clearInterval(slideInterval);
             slideInterval = setInterval(() => {
                 slides.forEach(s => s.classList.remove('active'));
-                slideIdx = (slideIdx + 1) % 3;
+                slideIdx = (slideIdx + 1) % 2; // Teraz są 2 obrazki
                 slides[slideIdx].classList.add('active');
             }, 3000);
-
-            // 5000 ms = 5 sekund
+            
             const totalDuration = 5000;
-            const stepTime = totalDuration / 19; 
+            const stepTime = totalDuration / 39; // Dla 40 graczy
 
             if (queueInterval) clearInterval(queueInterval);
             queueInterval = setInterval(() => {
                 currentPlayers++;
-                document.getElementById('player-count').innerText = Math.min(currentPlayers, 20);
-                if (currentPlayers >= 20) {
+                document.getElementById('player-count').innerText = Math.min(currentPlayers, 40);
+                if (currentPlayers >= 40) {
                     clearInterval(queueInterval);
                     clearInterval(slideInterval);
                     enterBattle();
@@ -988,17 +1018,28 @@
         // --- SILNIK GRY (BATTLE ENGINE) ---
         const GAME_CONFIG = {
             chunkSize: 100,
-            mapW: 20, mapH: 20, 
-            playerSpeed: 1.5, // 50% wolniej
-            rotationSpeed: 0.03, // Realistyczne obracanie
-            playerReload: 3000,
-            playerHP: 1000, // Bardzo dużo HP
-            botHP: 50,     // 1 strzał
+            mapW: 40, mapH: 40, 
+            playerSpeed: 2.5,
+            rotationSpeed: 0.06,
+            playerReload: 2500,
+            playerHP: 1000,
+            botHP: 50,
             botDmg: 50,
             playerDmg: 100
         };
-
-        const botNames = ["Filipek", "Ignacy", "Aleksander II", "Kuba", "Dominik", "BOT1", "BOT2", "BOT3", "BOT4", "BOT5"];
+        const botNames = ["BOT1", "BOT2", "BOT3", "BOT4", "BOT5", "BOT6", "BOT7", "BOT8", "BOT9", "BOT10"];
+        
+        const treeImages = [
+            'https://imgur.com/EHuhhrV.png',
+            'https://imgur.com/b4LyCHe.png',
+            'https://imgur.com/urEUC0d.png',
+            'https://imgur.com/VDn9e7I.png'
+        ];
+        
+        const obstacleTypes = [
+            { img: 'https://imgur.com/2NfYJou.png', w: 80, h: 60 },
+            { img: 'https://imgur.com/SkJ2ZMP.png', w: 80, h: 80 }
+        ];
 
         let gameState = {
             active: false,
@@ -1008,9 +1049,9 @@
             enemies: [],
             allies: [],
             bullets: [],
-            trees: [],
+            obstacles: []
         };
-
+        
         function initGame() {
             const layer = document.getElementById('game-layer');
             const world = document.getElementById('game-world');
@@ -1032,23 +1073,48 @@
             gameState.bullets = [];
             gameState.enemies = [];
             gameState.allies = [];
-            gameState.trees = [];
+            gameState.obstacles = [];
 
             createEntityDOM('player', 'tank-player entity-tank', 1000, 1000);
 
-            for(let i=0; i<9; i++) spawnUnit('ally');
-            for(let i=0; i<10; i++) spawnUnit('enemy');
-            for(let i=0; i<40; i++) {
-                const tx = Math.random() * 1900;
-                const ty = Math.random() * 1900;
-                createEntityDOM('tree-' + i, 'entity-tree', tx, ty);
-                gameState.trees.push({id: 'tree-' + i, x: tx, y: ty});
+            // ZMIANA: 9 Sojuszników
+            for(let i=0; i<19; i++) spawnUnit('ally');
+            
+            for(let i=0; i<20; i++) spawnUnit('enemy');
+            
+            for(let i=0; i<30; i++) {
+                const clusterX = Math.random() * 1900;
+                const clusterY = Math.random() * 1900;
+                const count = Math.floor(Math.random() * 4) + 3; 
+                
+                for(let j=0; j<count; j++) {
+                    const tx = clusterX + (Math.random() * 100 - 50);
+                    const ty = clusterY + (Math.random() * 100 - 50);
+                    if(tx > 0 && tx < 1950 && ty > 0 && ty < 1950) {
+                        const tId = 'tree-' + i + '-' + j;
+                        const tImg = treeImages[Math.floor(Math.random() * treeImages.length)];
+                        createEntityDOM(tId, 'entity-tree', tx, ty, null, tImg);
+                    }
+                }
             }
+            
+            obstacleTypes.forEach((type, idx) => {
+                for(let i=0; i<3; i++) {
+                    let ox, oy;
+                    do {
+                        ox = Math.random() * 1800 + 100;
+                        oy = Math.random() * 1800 + 100;
+                    } while (Math.abs(ox - 1000) < 150 && Math.abs(oy - 1000) < 150);
+                    
+                    const oid = 'obs-' + idx + '-' + i;
+                    createEntityDOM(oid, 'entity-obstacle', ox, oy, null, type.img, type.w, type.h);
+                    gameState.obstacles.push({ id: oid, x: ox, y: oy, w: type.w, h: type.h });
+                }
+            });
 
             document.getElementById('screen-win').style.display = 'none';
             document.getElementById('screen-lose').style.display = 'none';
             updateHUD();
-
             window.addEventListener('keydown', handleKeyDown);
             window.addEventListener('keyup', handleKeyUp);
             window.addEventListener('mousemove', handleMouseMove);
@@ -1060,11 +1126,22 @@
         function spawnUnit(type) {
             const id = type + '-' + Math.random().toString(36).substr(2, 9);
             let x, y;
-            do {
-                x = Math.random() * 1800 + 100;
-                y = Math.random() * 1800 + 100;
-            } while (Math.abs(x - 1000) < 300 && Math.abs(y - 1000) < 300);
-
+            
+            // ZMIANA: Logika spawnowania - sojusznicy blisko, wrogowie daleko
+            if (type === 'ally') {
+                // Spawnuj blisko gracza (w promieniu 100-300px od środka)
+                do {
+                    x = 1000 + (Math.random() * 600 - 300);
+                    y = 1000 + (Math.random() * 600 - 300);
+                } while (Math.abs(x - 1000) < 80 && Math.abs(y - 1000) < 80); // Nie bezpośrednio na graczu
+            } else {
+                // Wrogowie daleko (> 600px od gracza)
+                do {
+                    x = Math.random() * 1800 + 100;
+                    y = Math.random() * 1800 + 100;
+                } while (Math.abs(x - 1000) < 600 && Math.abs(y - 1000) < 600);
+            }
+            
             const unit = {
                 id: id, type: type, x: x, y: y, hp: GAME_CONFIG.botHP,
                 lastShot: 0, name: botNames[Math.floor(Math.random() * botNames.length)],
@@ -1072,16 +1149,27 @@
             };
             if(type === 'enemy') gameState.enemies.push(unit);
             else gameState.allies.push(unit);
-            createEntityDOM(id, `entity-tank tank-${type} ${type === 'enemy' ? 'enemy-hp' : ''}`, x, y, unit.name);
+            
+            // ZMIANA: Klasa CSS dla paska zdrowia
+            let hpClass = '';
+            if(type === 'enemy') hpClass = 'enemy-hp';
+            else if(type === 'ally') hpClass = 'ally-hp';
+
+            createEntityDOM(id, `entity-tank tank-${type} ${hpClass}`, x, y, unit.name);
         }
 
-        function createEntityDOM(id, className, x, y, name = null) {
+        function createEntityDOM(id, className, x, y, name = null, bgUrl = null, w = null, h = null) {
             const el = document.createElement('div');
             el.id = 'ent-' + id;
             el.className = 'game-entity ' + className;
             el.style.left = x + 'px';
             el.style.top = y + 'px';
-            if(id !== 'player' && !id.startsWith('tree')) {
+            
+            if(bgUrl) el.style.backgroundImage = `url('${bgUrl}')`;
+            if(w) el.style.width = w + 'px';
+            if(h) el.style.height = h + 'px';
+
+            if(id !== 'player' && !id.startsWith('tree') && !id.startsWith('obs')) {
                 const hpCont = document.createElement('div');
                 hpCont.className = 'hp-bar-container';
                 const hpFill = document.createElement('div');
@@ -1117,8 +1205,6 @@
             if(!gameState.active) return;
             const now = Date.now();
             if(now - gameState.player.lastShot > GAME_CONFIG.playerReload) {
-                // Gracz strzela tam gdzie celuje myszka, niezależnie od obrotu kadłuba
-                // Obliczamy kąt wieży (myszki)
                 const screenCenterX = window.innerWidth / 2;
                 const screenCenterY = window.innerHeight / 2;
                 const turretAngle = Math.atan2(gameState.mouse.y - screenCenterY, gameState.mouse.x - screenCenterX);
@@ -1140,41 +1226,42 @@
             setTimeout(() => { txt.innerText = "GOTOWY"; txt.style.color = "#fff"; }, GAME_CONFIG.playerReload);
         }
 
-        // --- KOLIZJE CZOŁGÓW ---
-        function checkTankCollision(x, y, selfId) {
+        // --- KOLIZJE CZOŁGÓW I PRZESZKÓD ---
+        function checkCollision(x, y, selfId) {
             const allUnits = [...gameState.enemies, ...gameState.allies];
             if(selfId !== 'player') allUnits.push(gameState.player);
 
             for (let unit of allUnits) {
-                if (unit.id === selfId) continue; // Pomiń siebie (dla botów)
-                // Dystans euklidesowy
+                if (unit.id === selfId) continue;
                 const dist = Math.hypot(x - unit.x, y - unit.y);
-                // 45px to bezpieczny margines (czołgi mają 50px)
-                if (dist < 45) return true; 
+                if (dist < 45) return true;
             }
-            // Sprawdź gracza jeśli selfId to nie gracz (już zrobione wyżej przez dodanie do allUnits)
-            // Ale dla pewności dodajmy drzewa, choć są tłem w tym trybie (przejezdne)
+            
+            for (let obs of gameState.obstacles) {
+                const ox = obs.x + obs.w/2;
+                const oy = obs.y + obs.h/2;
+                const dist = Math.hypot(x - ox, y - oy);
+                if(dist < (40 + obs.w/3)) return true; 
+            }
+            
             return false;
         }
 
         function gameLoop() {
             if(!gameState.active) return;
-
-            // --- RUCH GRACZA (REALISTYCZNY) ---
+            // --- RUCH GRACZA ---
             let speed = 0;
             if(gameState.keys.w) speed = GAME_CONFIG.playerSpeed;
             else if(gameState.keys.s) speed = -GAME_CONFIG.playerSpeed;
 
             if(gameState.keys.a) gameState.player.angle -= GAME_CONFIG.rotationSpeed;
             if(gameState.keys.d) gameState.player.angle += GAME_CONFIG.rotationSpeed;
-
-            // Oblicz nową pozycję
+            
             const nextX = gameState.player.x + Math.cos(gameState.player.angle) * speed;
             const nextY = gameState.player.y + Math.sin(gameState.player.angle) * speed;
 
-            // Sprawdź granice i kolizje
             if (nextX > 0 && nextX < 1950 && nextY > 0 && nextY < 1950) {
-                if(!checkTankCollision(nextX, nextY, 'player')) {
+                if(!checkCollision(nextX, nextY, 'player')) {
                     gameState.player.x = nextX;
                     gameState.player.y = nextY;
                 }
@@ -1184,75 +1271,98 @@
             const pEl = document.getElementById('ent-player');
             pEl.style.left = gameState.player.x + 'px';
             pEl.style.top = gameState.player.y + 'px';
-            // +90 bo grafika skierowana w górę
             pEl.style.transform = `rotate(${gameState.player.angle * 180 / Math.PI + 90}deg)`;
-
+            
             // --- KAMERA ---
             const screenCenterX = window.innerWidth / 2;
             const screenCenterY = window.innerHeight / 2;
             const camX = -gameState.player.x + screenCenterX - 25;
             const camY = -gameState.player.y + screenCenterY - 25;
             document.getElementById('game-world').style.transform = `translate(${camX}px, ${camY}px)`;
-
+            
             // --- BOTY ---
             moveBots(gameState.enemies, 'enemy');
             moveBots(gameState.allies, 'ally');
-
+            
             // --- POCISKI ---
             updateBullets();
             updateHUD();
 
             requestAnimationFrame(gameLoop);
         }
+        
+        function getNearestTarget(me, myType) {
+            let potentialTargets = [];
+            if (myType === 'enemy') {
+                potentialTargets = [...gameState.allies, gameState.player];
+            } else {
+                potentialTargets = gameState.enemies;
+            }
+            
+            if (potentialTargets.length === 0) return null;
+            
+            let nearest = null;
+            let minDist = Infinity;
+            
+            potentialTargets.forEach(t => {
+                const d = Math.hypot(me.x - t.x, me.y - t.y);
+                if (d < minDist) {
+                    minDist = d;
+                    nearest = t;
+                }
+            });
+            
+            return nearest;
+        }
 
         function moveBots(list, type) {
             const now = Date.now();
             list.forEach(bot => {
-                let targetX, targetY;
+                const target = getNearestTarget(bot, type);
                 
-                if(type === 'enemy') {
-                    // Wróg celuje w gracza
-                    targetX = gameState.player.x;
-                    targetY = gameState.player.y;
+                let targetX, targetY;
+                let shouldShoot = false;
+                
+                if (target) {
+                    targetX = target.x;
+                    targetY = target.y;
+                    shouldShoot = true;
                 } else {
-                    // Sojusznik jeździ losowo lub za graczem (uproszczone: losowy punkt)
                     if(!bot.targetX || Math.random() < 0.01) {
-                        bot.targetX = Math.random() * 1900;
+                         bot.targetX = Math.random() * 1900;
                         bot.targetY = Math.random() * 1900;
                     }
                     targetX = bot.targetX;
                     targetY = bot.targetY;
                 }
 
-                // Kąt do celu
                 const targetAngle = Math.atan2(targetY - bot.y, targetX - bot.x);
                 
-                // Obracanie bota w stronę celu
                 let diff = targetAngle - bot.angle;
-                // Normalizacja kąta
                 while (diff < -Math.PI) diff += Math.PI * 2;
                 while (diff > Math.PI) diff -= Math.PI * 2;
 
-                if (Math.abs(diff) > 0.1) {
+                if (Math.abs(diff) > 0.05) {
                     bot.angle += Math.sign(diff) * GAME_CONFIG.rotationSpeed;
                 }
 
-                // Ruch do przodu (jeśli w miare wycelowany)
+                const distToTarget = Math.hypot(targetX - bot.x, targetY - bot.y);
                 let speed = 0;
-                if(Math.abs(diff) < 1.0) speed = GAME_CONFIG.playerSpeed * 0.8; // Boty ciut wolniejsze
+                
+                if(distToTarget > 300 && Math.abs(diff) < 1.0) {
+                     speed = GAME_CONFIG.playerSpeed * 0.8;
+                }
 
                 const nextX = bot.x + Math.cos(bot.angle) * speed;
                 const nextY = bot.y + Math.sin(bot.angle) * speed;
 
-                // Kolizje botów
                 if (nextX > 0 && nextX < 1950 && nextY > 0 && nextY < 1950) {
-                     if(!checkTankCollision(nextX, nextY, bot.id)) {
+                     if(!checkCollision(nextX, nextY, bot.id)) {
                         bot.x = nextX;
                         bot.y = nextY;
                     }
                 }
 
-                // Render bota
                 const el = document.getElementById('ent-' + bot.id);
                 if(el) {
                     el.style.left = bot.x + 'px';
@@ -1260,12 +1370,9 @@
                     el.style.transform = `rotate(${bot.angle * 180 / Math.PI + 90}deg)`;
                 }
 
-                // Strzelanie
-                if(type === 'enemy') {
-                    const dist = Math.hypot(gameState.player.x - bot.x, gameState.player.y - bot.y);
-                    // Rzadziej strzelają (8000ms) i muszą być blisko (500px)
-                    if(dist < 500 && now - bot.lastShot > 8000) {
-                        fireBullet(bot, 'enemy', bot.angle);
+                if(shouldShoot) {
+                    if(distToTarget < 600 && Math.abs(diff) < 0.2 && now - bot.lastShot > 4000) { 
+                        fireBullet(bot, type, bot.angle);
                         bot.lastShot = now;
                     }
                 }
@@ -1299,7 +1406,17 @@
 
                 if(b.x < 0 || b.x > 2000 || b.y < 0 || b.y > 2000) { removeBullet(i); continue; }
 
-                if(b.owner === 'player') {
+                let hitObstacle = false;
+                for(let obs of gameState.obstacles) {
+                    if (b.x > obs.x && b.x < obs.x + obs.w && b.y > obs.y && b.y < obs.y + obs.h) {
+                        removeBullet(i);
+                        hitObstacle = true;
+                        break;
+                    }
+                }
+                if(hitObstacle) continue;
+
+                if(b.owner === 'player' || b.owner === 'ally') {
                     for(let j=gameState.enemies.length-1; j>=0; j--) {
                         const en = gameState.enemies[j];
                         if(checkHit(b, en)) {
@@ -1312,6 +1429,16 @@
                     if(checkHit(b, gameState.player)) {
                         damagePlayer(GAME_CONFIG.botDmg);
                         removeBullet(i);
+                    }
+                    else {
+                        for(let k=gameState.allies.length-1; k>=0; k--) {
+                            const al = gameState.allies[k];
+                            if(checkHit(b, al)) {
+                                damageUnit(al, GAME_CONFIG.botDmg, k, 'ally');
+                                removeBullet(i);
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -1344,7 +1471,10 @@
             if(gameState.player.hp <= 0) { gameState.player.hp = 0; endGame(false); }
         }
         function updateHUD() {
-            document.getElementById('hud-enemies-left').innerText = gameState.enemies.length;
+            // ZMIANA: Aktualizacja nowych liczników
+            document.getElementById('hud-enemies-count').innerText = gameState.enemies.length;
+            document.getElementById('hud-allies-count').innerText = gameState.allies.length;
+            
             document.getElementById('hud-hp').innerText = `${gameState.player.hp} / ${GAME_CONFIG.playerHP}`;
         }
         function endGame(win) {
@@ -1369,7 +1499,7 @@
             document.querySelector('.garage-background').style.display = 'block';
             document.getElementById('garage-tank-display').style.display = 'block';
             switchTab('garage');
-            location.reload(); 
+            location.reload();
         }
 
         window.onload = () => { loadState(); selectTank(0); runIntro(); };
@@ -1381,20 +1511,30 @@
             { text: "Naciśnij DO BOJU. Sterowanie: W/S - jazda, A/D - obrót, Mysz - strzał.", highlight: "ui-battle-btn" }
         ];
         let currentStepIndex = 0; let isTyping = false; let typeTimeout; let isTutorialActive = false;
-        function initTutorial() { document.getElementById('tutorial-container').classList.add('visible'); isTutorialActive = true; renderStep(); }
-        function closeTutorial() { document.getElementById('tutorial-container').classList.remove('visible'); removeHighlight(); isTutorialActive = false; }
-        function nextTutorialStep() { if (isTyping) { finishTypingImmediately(); return; } currentStepIndex++; if (currentStepIndex >= tutorialSteps.length) { closeTutorial(); return; } renderStep(); }
-        function removeHighlight() { document.querySelectorAll('.highlight-tutorial').forEach(el => el.classList.remove('highlight-tutorial')); }
+        function initTutorial() { document.getElementById('tutorial-container').classList.add('visible');
+        isTutorialActive = true; renderStep(); }
+        function closeTutorial() { document.getElementById('tutorial-container').classList.remove('visible'); removeHighlight(); isTutorialActive = false;
+        }
+        function nextTutorialStep() { if (isTyping) { finishTypingImmediately(); return; } currentStepIndex++;
+        if (currentStepIndex >= tutorialSteps.length) { closeTutorial(); return; } renderStep(); }
+        function removeHighlight() { document.querySelectorAll('.highlight-tutorial').forEach(el => el.classList.remove('highlight-tutorial'));
+        }
         function renderStep() {
-            removeHighlight(); const step = tutorialSteps[currentStepIndex];
+            removeHighlight();
+            const step = tutorialSteps[currentStepIndex];
             document.getElementById('t-step-counter').innerText = `Samouczek (${currentStepIndex + 1} / 5)`;
-            if (step.highlight) { const el = document.getElementById(step.highlight); if (el) el.classList.add('highlight-tutorial'); }
-            const textBox = document.getElementById('t-text'); textBox.innerText = "";
+            if (step.highlight) { const el = document.getElementById(step.highlight);
+            if (el) el.classList.add('highlight-tutorial'); }
+            const textBox = document.getElementById('t-text');
+            textBox.innerText = "";
             let charIndex = 0; isTyping = true;
-            function typeWriter() { if (!isTutorialActive) return; if (charIndex < step.text.length) { textBox.innerText += step.text.charAt(charIndex); charIndex++; typeTimeout = setTimeout(typeWriter, 30); } else { isTyping = false; } }
+            function typeWriter() { if (!isTutorialActive) return;
+            if (charIndex < step.text.length) { textBox.innerText += step.text.charAt(charIndex); charIndex++; typeTimeout = setTimeout(typeWriter, 30); } else { isTyping = false;
+            } }
             clearTimeout(typeTimeout); typeWriter();
         }
-        function finishTypingImmediately() { clearTimeout(typeTimeout); document.getElementById('t-text').innerText = tutorialSteps[currentStepIndex].text; isTyping = false; }
+        function finishTypingImmediately() { clearTimeout(typeTimeout); document.getElementById('t-text').innerText = tutorialSteps[currentStepIndex].text; isTyping = false;
+        }
     </script>
 </body>
 </html>
